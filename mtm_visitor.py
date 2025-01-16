@@ -22,16 +22,18 @@ class Visitor:
     Missing_Visits_Users = []
     Visitors = {}
 
-    def __init__(self, user_id, missing_visits=False):
-        self.user_id = user_id
+    def __init__(self, id, missing_visits=False):
+        self.id = id
         self.missing_visits = missing_visits
         self.visits_to_add = 0
         self.sim_visits = 0
-        self.visits = {}
+        self.visits = []
         self.first_visit = None
         self.last_visit = None
         self.one_bl_visit = None
         self.two_bl_visit = None
+
+        self.reached_pages = {}
         
     @classmethod
     def init(cls, db):
@@ -67,24 +69,24 @@ class Visitor:
     def get_visits(cls):
         for key in cls.Visitors:
             visitor = cls.Visitors[key]
-            visits_query = cls.Db_Conn.run_query(VISITS_QUERY.format(*[USER_ID,visitor.user_id]))
+            visits_query = cls.Db_Conn.run_query(VISITS_QUERY.format(*[USER_ID,visitor.id]))
             columns = [column[0] for column in visits_query.description]
             for row in visits_query:
                 ags = dict(zip(columns, row))
                 if not visitor.add_visit(**ags):
-                    raise Exception(f"Failed adding visit {ags['idvisit']} to user {visitor.user_id}")
+                    raise Exception(f"Failed adding visit {ags['idvisit']} to user {visitor.id}")
 
 
     def add_visit(self, idvisit, visitor_localtime, visit_first_action_time, visit_last_action_time, visit_total_time, visit_entry_idaction_url, 
                  visit_entry_idaction_name, visit_exit_idaction_url, visit_exit_idaction_name, visit_total_actions, visit_total_searches, visit_total_events, visit_goal_converted,
                  visitor_returning, visitor_count_visits, visitor_seconds_since_last, visitor_seconds_since_first):
         # breakpoint()
-        if f'{idvisit}' in self.visits:
+        if  [ visit for visit in self.visits if visit.idvisit == idvisit ] != [] :
             raise Exception(f'Visit {idvisit} already exists!')
 
         visit = Visit(idvisit, visitor_localtime, visit_first_action_time, visit_last_action_time, visit_total_time, visit_entry_idaction_url, 
                  visit_entry_idaction_name, visit_exit_idaction_url, visit_exit_idaction_name, visit_total_actions, visit_total_searches, visit_total_events, visit_goal_converted)
-        self.visits[f'{idvisit}'] = visit
+        self.visits.append(visit)
         
         if self.first_visit == None:
             self.first_visit = visit
@@ -100,11 +102,11 @@ class Visitor:
     def check(self, visitor_returning:int, count_visits:int, seconds_since_last:int, seconds_since_first:int) -> bool:
         # This needs to be the first check as it detects and adjust for simultaneous visits and missing visits
         if not self.check_count(count_visits,seconds_since_first):
-            debugout(f'{self.user_id}: count_visits {count_visits} differs from recorded {self.get_nr_visits()}', DebugLevels.ERR)
+            debugout(f'{self.id}: count_visits {count_visits} differs from recorded {self.get_nr_visits()}', DebugLevels.ERR)
             return False
 
         if (visitor_returning and self.get_nr_visits() < 2) or (not visitor_returning and self.get_nr_visits() > 1):
-            debugout(f'{self.user_id}: visitor_returning {visitor_returning} differs from recorded visit length: {self.get_nr_visits()}', DebugLevels.ERR)
+            debugout(f'{self.id}: visitor_returning {visitor_returning} differs from recorded visit length: {self.get_nr_visits()}', DebugLevels.ERR)
             # breakpoint()
             return False
         # breakpoint()
@@ -112,20 +114,20 @@ class Visitor:
         if seconds_since_last > 0 and not (self.missing_visits and self.one_bl_visit == None):
             rec_secs = (self.last_visit.visit_first_action_time - self.one_bl_visit.visit_first_action_time).total_seconds()
             if seconds_since_last != rec_secs:
-                debugout(f'{self.user_id}: seconds_since_last {seconds_since_last} differs from recorded {rec_secs}', DebugLevels.ERR)
+                debugout(f'{self.id}: seconds_since_last {seconds_since_last} differs from recorded {rec_secs}', DebugLevels.ERR)
                 # breakpoint()
                 return False
         if seconds_since_first > 0:
             rec_secs = (self.last_visit.visit_first_action_time - self.first_visit.visit_first_action_time).total_seconds()
             if seconds_since_first != rec_secs:
-                debugout(f'{self.user_id}: seconds_since_first {seconds_since_first} differs from recorded {rec_secs}', DebugLevels.ERR)
+                debugout(f'{self.id}: seconds_since_first {seconds_since_first} differs from recorded {rec_secs}', DebugLevels.ERR)
                 # breakpoint()
                 return False
         return True
 
     def check_count(self, count_visits, seconds_since_first):
         if count_visits != self.get_nr_visits():
-            if Visit.is_simultaneous_visit(self.user_id, self.last_visit):
+            if Visit.is_simultaneous_visit(self.id, self.last_visit):
                 self.sim_visits += 1
                 self.one_bl_visit = self.two_bl_visit
                 if count_visits == self.get_nr_visits():
@@ -150,6 +152,32 @@ class Visitor:
         visit_first_action_time = self.last_visit.visit_first_action_time - datetime.timedelta(seconds=seconds_since_first)
         fake_visit = Visit.create_fake_first_visit(visit_first_action_time)
         self.first_visit = fake_visit
+
+    def set_start_page(self, page:str, server_time:datetime):
+        if 'START' in self.reached_pages:
+            raise Exception(f'Visitor {self.id} has already a start')
+        self.reached_pages['START'] = {
+                                        'time': server_time,
+                                        'start_point' : page
+                                        }
+
+    def set_reached_page(self, page:str, server_time:datetime):
+        if page in self.reached_pages:
+            self.reached_pages[page]['times'].append(server_time)
+        else:
+            self.reached_pages[page] = {
+                'times': [server_time],
+            }
+
+    def time_to_endpoint(self, endpoint):
+        start = self.reached_pages['START']['time']
+        if endpoint == self.reached_pages['START']['start_point']:
+            return datetime.timedelta(seconds=0)
+        for page in self.reached_pages:
+            if page == endpoint:
+                earliest = min(self.reached_pages[page]['times'])
+                return earliest - start
+        return -1
 
 
 

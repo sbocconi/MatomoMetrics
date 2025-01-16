@@ -2,12 +2,15 @@
 from matomodb import MatomoDB
 from tqdm import tqdm
 import traceback
+import datetime
 
 from debugout import DebugLevels, debugout, set_dbglevel
 
 from mtm_visit import Visit
 from mtm_visitor import Visitor
 from mtm_action import ActionItem
+
+STARTING_POINTS = ['LOGIN', 'HOME', 'REGISTER','PRIVACYPOLICY','PASSWORD']
 
 class NoRealVisitor(Exception):
     pass
@@ -26,15 +29,17 @@ def main(user, password, host, port, socket, database):
         Visit.init(db)
         Visitor.init(db)
         
-        nr_testers = 0
-        nr_hackers = 0
-        nr_visitors = 0
+        Testers = []
+        Hackers = []
+        Act_Visitors = []
+        Act_Miss_Visitors = []
+        Inact_Visitors = []
 
         for vstr_key in Visitor.Visitors:
             visitor = Visitor.Visitors[vstr_key]
+            has_visited = False
             try:
-                for vst_key in visitor.visits:
-                    visit = visitor.visits[vst_key]
+                for visit in visitor.visits:
                     if len(visit.actions) == 0:
                         continue
                     all_visits = True
@@ -49,21 +54,65 @@ def main(user, password, host, port, socket, database):
                         elif action.label == 'VISIT':
                             at_least_one_visit = True
                         elif action.label != 'VISIT':
-                            print(action.label)
+                            # breakpoint()
+                            debugout(f'Action label: {action.label}, url: {action.url.name}', DebugLevels.VRBS)
                             all_visits = False
-                    print(f'All actions are visit: {all_visits}, at least one: {at_least_one_visit}')
-                    if not at_least_one_visit:
-                        breakpoint()
-                    
-                nr_visitors += 1
+                    # debugout(f'All actions are visits: {all_visits}, at least one visit: {at_least_one_visit}', DebugLevels.VRBS)
+                    if len(visit.actions) and at_least_one_visit:
+                        has_visited = True
+                if has_visited:
+                    if visitor.missing_visits:
+                        Act_Miss_Visitors.append(visitor)
+                    else:
+                        Act_Visitors.append(visitor)
+                else:
+                    Inact_Visitors.append(visitor)
             except NoRealVisitor as e:
                 # breakpoint()
                 if str(e) == 'Tester':
-                    nr_testers += 1
+                    Testers.append(visitor)
                 elif str(e) == 'Hacker':
-                    nr_hackers += 1
+                    Hackers.append(visitor)
                 
-        print(f'visitors {nr_visitors}, testers {nr_testers}, hackers {nr_hackers}')        
+        print(f'Active visitors {len(Act_Visitors)}, active visitors missing visits {len(Act_Miss_Visitors)}, inactive visitors {len(Inact_Visitors)}, testers {len(Testers)}, hackers {len(Hackers)}')        
+
+
+        strange_first_visits = 0
+        for visitor in Act_Visitors:
+            first_visit = True
+            for visit in visitor.visits:
+                    if len(visit.actions) == 0:
+                        continue
+                    for action in visit.actions:
+                        if action.label == 'VISIT':
+                            if first_visit:
+                                if action.sublabel not in STARTING_POINTS:
+                                    strange_first_visits += 1
+                                    debugout(f"Strange first visit: {action.sublabel}", DebugLevels.VRBS)
+                                visitor.set_start_page(action.sublabel, action.server_time)
+                            else:
+                                visitor.set_reached_page(action.sublabel, action.server_time)
+                            first_visit = False
+        
+        if strange_first_visits > 0:
+            debugout(f'{strange_first_visits} visitors not starting from {STARTING_POINTS}', DebugLevels.WRNG)
+
+        for path in ActionItem.PATH_PATTERNS:
+            endpoint = path['label']
+            reached_by = 0
+            total_time_to_page = datetime.timedelta(seconds=0)
+            for visitor in Act_Visitors:
+                time_to_page = visitor.time_to_endpoint(endpoint)
+                if time_to_page != -1:
+                    reached_by += 1
+                    total_time_to_page +=  time_to_page
+            if reached_by > 0:
+                elapsed = total_time_to_page/reached_by
+                print(f'Page {endpoint} reached by {round(reached_by/len(Act_Visitors)*100,2)}% in average {elapsed.days} days and {round(elapsed.seconds/60/60,2)} hours')
+            else:
+                print(f'Page {endpoint} not reached')
+
+
     except Exception as e:
         print(f"{''.join(traceback.format_exception(e))}")
         

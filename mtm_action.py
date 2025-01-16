@@ -137,7 +137,7 @@ class ActionItem:
         },
         {
             'string': r'/privacy-policy?',
-            'label' : "PRIVACYPOLICE"
+            'label' : "PRIVACYPOLICY"
         },        
     ]
 
