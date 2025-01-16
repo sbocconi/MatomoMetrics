@@ -3,11 +3,14 @@ from matomodb import MatomoDB
 from tqdm import tqdm
 import traceback
 
+from debugout import DebugLevels, debugout, set_dbglevel
+
 from mtm_visit import Visit
 from mtm_visitor import Visitor
 from mtm_action import ActionItem
 
-
+class NoRealVisitor(Exception):
+    pass
 
 def main(user, password, host, port, socket, database):
     # Connect to MariaDB
@@ -19,20 +22,54 @@ def main(user, password, host, port, socket, database):
         # breakpoint()
         db.connect(user=user,password=password)
 
+        ActionItem.init(db)
         Visit.init(db)
         Visitor.init(db)
-        ActionItem.init(db)
         
-        
+        nr_testers = 0
+        nr_hackers = 0
+        nr_visitors = 0
+
+        for vstr_key in Visitor.Visitors:
+            visitor = Visitor.Visitors[vstr_key]
+            try:
+                for vst_key in visitor.visits:
+                    visit = visitor.visits[vst_key]
+                    if len(visit.actions) == 0:
+                        continue
+                    all_visits = True
+                    at_least_one_visit = False
+                    for action in visit.actions:
+                        if action.label in ["TESTING","LOCALTESTING"]:
+                            raise NoRealVisitor('Tester')
+                        elif action.label in ["HACK"]:
+                            raise NoRealVisitor('Hacker')
+                        elif action.label == None:
+                            raise Exception(f'Action {action.idlink_va} in visit {visit.idvisit} has null Label')
+                        elif action.label == 'VISIT':
+                            at_least_one_visit = True
+                        elif action.label != 'VISIT':
+                            print(action.label)
+                            all_visits = False
+                    print(f'All actions are visit: {all_visits}, at least one: {at_least_one_visit}')
+                    if not at_least_one_visit:
+                        breakpoint()
+                    
+                nr_visitors += 1
+            except NoRealVisitor as e:
+                # breakpoint()
+                if str(e) == 'Tester':
+                    nr_testers += 1
+                elif str(e) == 'Hacker':
+                    nr_hackers += 1
+                
+        print(f'visitors {nr_visitors}, testers {nr_testers}, hackers {nr_hackers}')        
     except Exception as e:
-        # print(f"Error: {e}")
         print(f"{''.join(traceback.format_exception(e))}")
         
     finally:
         if db != None:
             db.close_conn()
-    
-    
 
 
 if __name__ == "__main__":
@@ -67,10 +104,21 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        '-l','--level',
+        dest='level',
+        action='store',
+        default=1,
+        type = int,
+        required=False,
+        help='specifies the level of output',
+    )
+
+    parser.add_argument(
         '--port',
         dest='port',
         action='store',
         default=3306,
+        type = int,
         required=False,
         help='specifies the port to connect to',
     )
@@ -96,8 +144,10 @@ if __name__ == "__main__":
     args, unknown = parser.parse_known_args()
 
     if len(unknown) > 0:
-        print(f'Unknown options {unknown}')
+        debugout(f'Unknown options {unknown}', DebugLevels.ERR)
         parser.print_help()
         exit(-1)
+
+    set_dbglevel(args.level)
 
     main(user=args.user, password=args.password, host=args.host, port=args.port, database=args.db, socket=args.socket)

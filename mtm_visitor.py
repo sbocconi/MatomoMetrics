@@ -1,5 +1,6 @@
 import datetime
 
+from debugout import DebugLevels, debugout
 from mtm_visit import Visit
 
 # Ideally this is the user id, but it must be set
@@ -48,7 +49,7 @@ class Visitor:
             # breakpoint()
             cls.Missing_Visits_Users.append(idvisitor[0])
 
-        print(f'Nr users missing visits: {len(cls.Missing_Visits_Users)}')
+        debugout(f'Nr users missing visits: {len(cls.Missing_Visits_Users)}', DebugLevels.VRBS)
 
     @classmethod
     def get_users(cls):
@@ -99,11 +100,11 @@ class Visitor:
     def check(self, visitor_returning:int, count_visits:int, seconds_since_last:int, seconds_since_first:int) -> bool:
         # This needs to be the first check as it detects and adjust for simultaneous visits and missing visits
         if not self.check_count(count_visits,seconds_since_first):
-            print(f'{self.user_id}: count_visits {count_visits} differs from recorded {self.get_nr_visits()}')
+            debugout(f'{self.user_id}: count_visits {count_visits} differs from recorded {self.get_nr_visits()}', DebugLevels.ERR)
             return False
 
         if (visitor_returning and self.get_nr_visits() < 2) or (not visitor_returning and self.get_nr_visits() > 1):
-            print(f'{self.user_id}: visitor_returning {visitor_returning} differs from recorded visit length: {self.get_nr_visits()}')
+            debugout(f'{self.user_id}: visitor_returning {visitor_returning} differs from recorded visit length: {self.get_nr_visits()}', DebugLevels.ERR)
             # breakpoint()
             return False
         # breakpoint()
@@ -111,13 +112,13 @@ class Visitor:
         if seconds_since_last > 0 and not (self.missing_visits and self.one_bl_visit == None):
             rec_secs = (self.last_visit.visit_first_action_time - self.one_bl_visit.visit_first_action_time).total_seconds()
             if seconds_since_last != rec_secs:
-                print(f'{self.user_id}: seconds_since_last {seconds_since_last} differs from recorded {rec_secs}')
+                debugout(f'{self.user_id}: seconds_since_last {seconds_since_last} differs from recorded {rec_secs}', DebugLevels.ERR)
                 # breakpoint()
                 return False
         if seconds_since_first > 0:
             rec_secs = (self.last_visit.visit_first_action_time - self.first_visit.visit_first_action_time).total_seconds()
             if seconds_since_first != rec_secs:
-                print(f'{self.user_id}: seconds_since_first {seconds_since_first} differs from recorded {rec_secs}')
+                debugout(f'{self.user_id}: seconds_since_first {seconds_since_first} differs from recorded {rec_secs}', DebugLevels.ERR)
                 # breakpoint()
                 return False
         return True

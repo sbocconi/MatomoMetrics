@@ -1,5 +1,11 @@
 
 import datetime
+import re
+from urllib.parse import urlparse
+
+from debugout import DebugLevels, debugout
+
+from mtm_action import ActionItem, Action
 
 SIM_VISITS_QUERY = '''SELECT HEX(idvisitor), visit_first_action_time, idvisit 
                         FROM matomo_log_visit
@@ -48,7 +54,7 @@ class Visit:
         """
         sim_visits_query = cls.Db_Conn.run_query(SIM_VISITS_QUERY)
         for idvisitor, visit_first_action_time, idvisit in sim_visits_query:
-            print(f"Simultaneous visit: {idvisitor} at {visit_first_action_time}, idvisit {idvisit}")
+            debugout(f"Simultaneous visit: {idvisitor} at {visit_first_action_time}, idvisit {idvisit}", DebugLevels.VRBS)
             key = f'{idvisitor}_{visit_first_action_time}'
             if key in cls.Sim_Visits:
                 cls.Sim_Visits[key].append(idvisit)
@@ -76,13 +82,82 @@ class Visit:
         
         for row_nr, row in enumerate(actions_query):
             ags = dict(zip(columns, row))
+            url_ref = ActionItem.retrieve_entry(ags['idaction_url_ref'])
+            name_ref = ActionItem.retrieve_entry(ags['idaction_name_ref'])
+            url = ActionItem.retrieve_entry(ags['idaction_url'])
+            name = ActionItem.retrieve_entry(ags['idaction_name'])
+
             if row_nr == 0:
                 if not self.visit_first_action_time == ags['server_time']:
-                    breakpoint()
                     raise Exception(f'Visit time not consistent with first action time')
+                if not (url_ref == None and name_ref == None):
+                    raise Exception(f'First action cannot have previous action')
+                if url != None and url.type == 'TYPE_OUTLINK':
+                    debugout(f'First action is an outlink for visit {self.idvisit}', DebugLevels.VRBS)
             if ags['pageview_position'] == actions_query.rowcount:
                 if not self.visit_last_action_time == ags['server_time']:
-                    breakpoint()
                     raise Exception(f'Visit time not consistent with last action time')
+            
+            if url == None:
+                # This happens but it is not clear why
+                debugout(f'Url is none for action nr {row_nr+1} in visit {self.idvisit}', DebugLevels.VRBS)
+                continue
+            
+            action = Action(url=url, name=name, url_ref=url_ref, name_ref=name_ref,idlink_va=ags['idlink_va'],pageview_position=ags['pageview_position'],server_time=ags['server_time'])
+            self.actions.append(action)
 
-            # breakpoint()
+            if url.type == 'TYPE_PAGE_URL' or url.type == 'TYPE_EVENT_ACTION':
+                
+                full_url = url.url_prefix + url.name if url.url_prefix != None else url.name
+                parsed_url = urlparse(full_url)
+                # breakpoint()
+                # print(parsed_url.scheme)
+                if not parsed_url.scheme in ActionItem.ALLOWED_SCHEMES:
+                    action.set_label('HACK')
+                    continue
+                loc_found = 0
+                for loc_pattern in ActionItem.LOC_PATTERNS:
+                    p = re.compile(loc_pattern['string'],re.I)
+                    m = p.match(parsed_url.netloc)
+                    if m:
+                        loc_found += 1
+                        if loc_pattern['label'] == "VISIT":
+                            path_found = 0
+                            
+                            for path_pattern in ActionItem.PATH_PATTERNS:
+                                pp = re.compile(path_pattern['string'])
+                                mm = pp.match(parsed_url.path)
+                                if mm:
+                                   path_found += 1
+                                   action.set_label(label='VISIT', sublabel=path_pattern['label'])
+                                #    break
+                            if path_found == 0:
+                                hack_found = False
+                                for hack in ActionItem.HACK_PATTERNS:
+                                    # case-insensitive check
+                                    if hack.lower() in parsed_url.path.lower():
+                                        hack_found = True
+                                        action.set_label(label='HACK')
+                                        break
+                                if not hack_found:
+                                    debugout(f'Path not found: {parsed_url.path}', DebugLevels.WRNG)
+                                    action.set_label(label='UNDEFINED')
+                                # breakpoint()
+                            if path_found > 1:
+                                raise Exception(f'pattern found nr {path_found} for {parsed_url.path}')
+                        else:
+                            action.set_label(label=loc_pattern['label'])
+                if not loc_found == 1:
+                    raise Exception(f'pattern found nr {loc_found} for {parsed_url.netloc}')
+                    # breakpoint()
+            elif url.type == 'TYPE_OUTLINK':
+                action.set_label('OUTLINK')
+            elif url.type == 'TYPE_DOWNLOAD':
+                action.set_label('DOWNLOAD')
+            # elif url.type == 'TYPE_EVENT_ACTION':
+            #     print(url.name)
+            #     breakpoint()
+            #     action.set_label('TYPE_EVENT_ACTION')
+            else:
+                raise Exception(f'Type unknown: {url.type}')
+                # breakpoint()
