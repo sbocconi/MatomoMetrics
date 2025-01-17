@@ -153,31 +153,43 @@ class Visitor:
         fake_visit = Visit.create_fake_first_visit(visit_first_action_time)
         self.first_visit = fake_visit
 
-    def set_start_page(self, page:str, server_time:datetime):
+    def set_start_page(self, page:str, server_time:datetime, visit_nr:int):
         if 'START' in self.reached_pages:
             raise Exception(f'Visitor {self.id} has already a start')
         self.reached_pages['START'] = {
                                         'time': server_time,
-                                        'start_point' : page
+                                        'start_point' : page,
+                                        'visit_nr' : visit_nr
                                         }
 
-    def set_reached_page(self, page:str, server_time:datetime):
+    def set_reached_page(self, page:str, server_time:datetime, visit_nr:int):
         if page in self.reached_pages:
             self.reached_pages[page]['times'].append(server_time)
+            self.reached_pages[page]['visit_nrs'].append(visit_nr)
         else:
             self.reached_pages[page] = {
                 'times': [server_time],
+                'visit_nrs' : [visit_nr],
             }
 
     def time_to_endpoint(self, endpoint):
         start = self.reached_pages['START']['time']
         if endpoint == self.reached_pages['START']['start_point']:
-            return datetime.timedelta(seconds=0)
-        for page in self.reached_pages:
-            if page == endpoint:
-                earliest = min(self.reached_pages[page]['times'])
-                return earliest - start
-        return -1
+            return datetime.timedelta(seconds=0), datetime.timedelta(seconds=0)
+        if endpoint in self.reached_pages:
+            earliest = min(self.reached_pages[endpoint]['times'])
+            visit_nr_idx = [i for i in range(len(self.reached_pages[endpoint]['times'])) if self.reached_pages[endpoint]['times'][i] == earliest][0]
+            visit_nr = self.reached_pages[endpoint]['visit_nrs'][visit_nr_idx]
+            rel_time = datetime.timedelta(seconds=0)
+            for visit in self.visits[:visit_nr]:
+                if visit.actions == []:
+                    debugout(f'No actions for visitor {self.id} in visit {visit.idvisit} ', DebugLevels.VRBS)
+                    continue
+                rel_time = rel_time + visit.actions[-1].server_time - visit.actions[0].server_time
+            rel_time = rel_time + earliest - self.visits[visit_nr].actions[0].server_time
+            # breakpoint()
+            return earliest - start, rel_time
+        return -1, -1
 
 
 
