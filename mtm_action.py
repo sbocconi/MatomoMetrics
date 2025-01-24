@@ -100,15 +100,15 @@ class ActionItem:
             'label' : "API"
         },
         {
-            'string': r'/login/?',
+            'string': r'/login/?|/accounts/login/?|/app-auth/login/?',
             'label' : "LOGIN"
         },
         {
-            'string': r'/register/?',
+            'string': r'/register/?|/signup/?',
             'label' : "REGISTER"
         },
         {
-            'string': r'/home/?|/$',
+            'string': r'/home/?|/$|/about/?',
             'label' : "HOME"
         },
         {
@@ -128,7 +128,7 @@ class ActionItem:
             'label' : "PASSWORD"
         },
         {
-            'string': r'/faq/?',
+            'string': r'/faq/?|/sub-app-partner-faq-chat/?',
             'label' : "FAQ"
         },
         {
