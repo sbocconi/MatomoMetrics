@@ -78,6 +78,7 @@ def main(user, password, host, port, socket, database):
 
 
         strange_first_visits = 0
+        Normal_Visitors = []
         for visitor in Act_Visitors:
             first_visit = True
             for visit_nr, visit in enumerate(visitor.visits):
@@ -89,6 +90,8 @@ def main(user, password, host, port, socket, database):
                             if action.sublabel not in STARTING_POINTS:
                                 strange_first_visits += 1
                                 debugout(f"Strange first visit: {action.sublabel}", DebugLevels.VRBS)
+                            else:
+                                Normal_Visitors.append(visitor)
                             visitor.set_start_page(action.sublabel, action.server_time, visit_nr)
                         else:
                             visitor.set_reached_page(action.sublabel, action.server_time, visit_nr)
@@ -102,6 +105,7 @@ def main(user, password, host, port, socket, database):
             reached_by = 0
             total_abs_time_to_page = datetime.timedelta(seconds=0)
             total_rel_time_to_page = datetime.timedelta(seconds=0)
+            # The following can iterate on Normal_Visitors or on Act_Visitors
             for visitor in Act_Visitors:
                 abs_time_to_page, rel_time_to_page = visitor.time_to_endpoint(endpoint)
                 if abs_time_to_page != -1:
