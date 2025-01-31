@@ -3,6 +3,7 @@ from matomodb import MatomoDB
 from tqdm import tqdm
 import traceback
 import datetime
+import plotly.graph_objects as go
 
 from debugout import DebugLevels, debugout, set_dbglevel
 
@@ -100,13 +101,14 @@ def main(user, password, host, port, socket, database):
         if strange_first_visits > 0:
             debugout(f'{strange_first_visits} visitors not starting from {STARTING_POINTS}', DebugLevels.WRNG)
 
+        # Calculate average times to endpoints
         for path in ActionItem.PATH_PATTERNS:
             endpoint = path['label']
             reached_by = 0
             total_abs_time_to_page = datetime.timedelta(seconds=0)
             total_rel_time_to_page = datetime.timedelta(seconds=0)
             # The following can iterate on Normal_Visitors or on Act_Visitors
-            for visitor in Act_Visitors:
+            for visitor in Normal_Visitors:
                 abs_time_to_page, rel_time_to_page = visitor.time_to_endpoint(endpoint)
                 if abs_time_to_page != -1:
                     reached_by += 1
@@ -120,6 +122,89 @@ def main(user, password, host, port, socket, database):
             else:
                 print(f'Page {endpoint} not reached')
 
+        OUT = 'OUT'
+        IN = 'IN'
+        not_meaningful = ['ADMIN', 'API']
+        all_paths = {}
+
+        for visitor in Normal_Visitors:
+            for visit_nr, visit in enumerate(visitor.visits):
+                if len(visit.actions) == 0:
+                    continue
+                path = [IN]
+                for action in visit.actions:
+                    if action.label == 'VISIT':
+                        # Skip staying on the same page
+                        if path != [] and path[-1] == action.sublabel:
+                            continue
+                        if action.sublabel in not_meaningful:
+                            continue
+                        path.append(action.sublabel)
+                if path == [IN]:
+                    continue
+                path.append(OUT)
+                # breakpoint()
+                print('->'.join(path))
+
+                for i in range(len(path)-1):
+                    # if path != 'LOGIN' and i == 0:
+                    key = f'{path[i]}_{path[i+1]}'
+                    if key in all_paths:
+                        all_paths[key] += 1
+                    else:
+                        all_paths[key] = 1
+
+
+        sources = []
+        targets = []
+        values = []
+        labels = [IN]
+        labels.extend([ path['label'] for path in ActionItem.PATH_PATTERNS])
+        # labels.append(IN)
+        labels.append(OUT)
+        # breakpoint()
+        # 'IN'
+        # 'REGISTER', 'LOGIN', 'HOME', 'PASSWORD', 'PROFILE', 
+        # 'CONTENT', 'TEAM', 'ORGANISATION', 
+        # 'MARKETPLACE', 'WISHLIST', 'PORTFOLIO', 'MODERATION', 
+        # 'DAO', 
+        # 'TOOLS', 
+        # 'COMPETITIONS', 
+        # 'FAQ', 'PRIVACYPOLICY', 
+        # 'ADMIN', 'API', 
+        # 'OUT'
+        x = [0.1, 0.2,0.2,0.2,0.2,0.2, 0.3,0.3,0.3, 0.4,0.4,0.4,0.4, 0.5, 0.6, 0.7, 0.7,0.7, 0.7,0.7, 0.9]
+        y = [0.5, 0.1,0.2,0.5,0.7,0.9, 0.3,0.5,0.7, 0.2,0.4,0.6,0.8, 0.5, 0.5, 0.1, 0.3,0.5, 0.7,0.9, 0.5]
+
+        for key, value in all_paths.items():
+            source_str, target_str = key.split('_')
+            source = [i for i in range(len(labels)) if labels[i] == source_str][0]
+            target = [i for i in range(len(labels)) if labels[i] == target_str][0]
+            sources.append(source)
+            targets.append(target)
+            values.append(value)
+
+        
+        link = dict(source = sources, target = targets, value = values)
+        # node = dict(label = labels, x=x, y=y)
+        # node = dict(label = labels)
+        # node = dict(label=labels, pad=200, x=x)
+        node = dict(label=labels, pad=250, thickness=50)
+        
+        data = go.Sankey(arrangement = "snap",valueformat = "d", link = link, node=node)
+        # plot
+        fig = go.Figure(data)
+        fig.show()
+    
+
+
+
+
+                        
+
+        breakpoint()
+
+            
 
     except Exception as e:
         print(f"{''.join(traceback.format_exception(e))}")

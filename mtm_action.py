@@ -63,6 +63,38 @@ class ActionItem:
 
     PATH_PATTERNS = [
         {
+            'string': r'/register/?|/signup/?',
+            'label' : "REGISTER"
+        },
+        {
+            'string': r'/login/?|/accounts/login/?|/app-auth/login/?',
+            'label' : "LOGIN"
+        },
+        {
+            'string': r'/home/?|/$|/about/?',
+            'label' : "HOME"
+        },
+        {
+            'string': r'/reset-password/?|/restore-password/?',
+            'label' : "PASSWORD"
+        },
+        {
+            'string': r'/profile/?',
+            'label' : "PROFILE"
+        },
+        {
+            'string': r'/content/?',
+            'label' : "CONTENT"
+        },
+        {
+            'string': r'/team/?|/my-team/?',
+            'label' : "TEAM"
+        },
+        {
+            'string': r'/organization/?',
+            'label' : "ORGANISATION"
+        },
+        {
             'string': r'/marketplace(?!-)/?|/nft-marketplace/?(?!-)|/sub-app-partner-nft-marketplace/?',
             'label' : "MARKETPLACE"
         },
@@ -74,7 +106,6 @@ class ActionItem:
             'string': r'/portfolio/?',
             'label' : "PORTFOLIO"
         },
-
         {
             'string': r'/moderation/?',
             'label' : "MODERATION"
@@ -88,57 +119,25 @@ class ActionItem:
             'label' : "TOOLS"
         },
         {
-            'string': r'/team/?|/my-team/?',
-            'label' : "TEAM"
-        },
-        {
-            'string': r'/organization/?',
-            'label' : "ORGANISATION"
-        },
-        {
-            'string': r'/api/?|/marketplace-api/?|/nft-marketplace-api/?',
-            'label' : "API"
-        },
-        {
-            'string': r'/login/?|/accounts/login/?|/app-auth/login/?',
-            'label' : "LOGIN"
-        },
-        {
-            'string': r'/register/?|/signup/?',
-            'label' : "REGISTER"
-        },
-        {
-            'string': r'/home/?|/$|/about/?',
-            'label' : "HOME"
-        },
-        {
-            'string': r'/admin/?|/dozzle/?',
-            'label' : "ADMIN"
-        },
-        {
             'string': r'/competitions/?',
             'label' : "COMPETITIONS"
-        },
-        {
-            'string': r'/content/?',
-            'label' : "CONTENT"
-        },
-        {
-            'string': r'/reset-password/?|/restore-password/?',
-            'label' : "PASSWORD"
         },
         {
             'string': r'/faq/?|/sub-app-partner-faq-chat/?',
             'label' : "FAQ"
         },
         {
-            'string': r'/profile/?',
-            'label' : "PROFILE"
-        },
-        {
             'string': r'/privacy-policy?',
             'label' : "PRIVACYPOLICY"
         },        
+        {
+            'string': r'/admin/?|/dozzle/?',
+            'label' : "ADMIN"
+        },
+        {
+            'string': r'/api/?|/marketplace-api/?|/nft-marketplace-api/?',
+            'label' : "API"
+        },
     ]
 
     HACK_PATTERNS =[
