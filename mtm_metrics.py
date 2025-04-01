@@ -1,5 +1,5 @@
 
-from matomodb import MatomoDB
+from mariadbconn import MariaDBConn
 from tqdm import tqdm
 import traceback
 import datetime
@@ -22,9 +22,9 @@ def main(user, password, host, port, socket, database):
     
     
     try:
-        db = MatomoDB(database, host, socket, port)
+        db = MariaDBConn(user=user, database=database, host=host, socket=socket, port=port)
         # breakpoint()
-        db.connect(user=user,password=password)
+        db.connect(password=password)
 
         ActionItem.init(db)
         Visit.init(db)
@@ -144,7 +144,7 @@ def main(user, password, host, port, socket, database):
                     continue
                 path.append(OUT)
                 # breakpoint()
-                print('->'.join(path))
+                # print('->'.join(path))
 
                 for i in range(len(path)-1):
                     # if path != 'LOGIN' and i == 0:

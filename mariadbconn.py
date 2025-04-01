@@ -1,19 +1,25 @@
 import mariadb
 import sys
+from os import system
 
-class MatomoDB:
-    def __init__(self, database:str, host:str=None, socket:str=None, port:int=3306):
+class MariaDBConn:
+    def __init__(self, user:str, database:str, host:str=None, socket:str=None, port:int=3306):
         self.host = host
         self.port = port
         self.socket = socket
         self.database = database
+        self.user = user
         self.conn = None
 
-    def connect(self, user, password):
+    def load_data(self, filename):
+        command = f'mysql -u {self.user} < {filename}'
+        system(command)
+
+    def connect(self, password):
         try:
             if self.host is not None:
                 self.conn = mariadb.connect(
-                    user=user,
+                    user=self.user,
                     password=password,
                     host=self.host,
                     port=self.port,
@@ -22,7 +28,7 @@ class MatomoDB:
                 )
             else:
                 self.conn = mariadb.connect(
-                    user=user,
+                    user=self.user,
                     password=password,
                     unix_socket=self.socket,
                     database=self.database
