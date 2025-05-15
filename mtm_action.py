@@ -95,7 +95,7 @@ class ActionItem:
             'label' : "ORGANISATION"
         },
         {
-            'string': r'/marketplace(?!-)/?|/nft-marketplace/?(?!-)|/sub-app-partner-nft-marketplace/?',
+            'string': r'/marketplace(?!-)/?|/nft-marketplace/?(?!-)|/sub-app-partner-nft-marketplace/?|/marketplace-item/public/',
             'label' : "MARKETPLACE"
         },
         {
@@ -115,7 +115,7 @@ class ActionItem:
             'label' : "DAO"
         },
         {
-            'string': r'/tool/?|/style-transfer|/virtual-avatar|/webpd|/nft-content-analysis|/pose-estimation|/3d-object-reconstruction|/sub-app-partner-vue|/sub-app-partner-content-creation-tools|/sub-app-vue',
+            'string': r'/tool/?|/style-transfer|/virtual-avatar|/webpd|/nft-content-analysis|/pose-estimation|/3d-object-reconstruction|/sub-app-partner-vue|/sub-app-partner-content-creation-tools|/sub-app-vue|/art-generator',
             'label' : "TOOLS"
         },
         {
@@ -148,7 +148,8 @@ class ActionItem:
         'waitfor',
         'DBMS',
         'include src',
-        '</ScRiPt>'
+        '</ScRiPt>',
+        'env',
     ]
     @classmethod
     def init(cls, db):

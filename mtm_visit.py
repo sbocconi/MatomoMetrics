@@ -9,14 +9,15 @@ from mtm_action import ActionItem, Action
 
 SIM_VISITS_QUERY = '''SELECT HEX(idvisitor), visit_first_action_time, idvisit 
                         FROM matomo_log_visit
-                        WHERE visit_first_action_time IN (SELECT visit_first_action_time
+                        WHERE idsite = 1 AND visit_first_action_time IN (SELECT visit_first_action_time
                             FROM matomo_log_visit 
+                            WHERE idsite = 1 
                             GROUP BY HEX(idvisitor), visit_first_action_time 
                             HAVING COUNT(visit_first_action_time) > 1
                         );
             '''
 VISIT_ACTION_QUERY = 'SELECT idlink_va, idaction_url_ref, idaction_name_ref, pageview_position, server_time, idpageview, idaction_name, idaction_url, time_spent_ref_action ' \
-    'FROM matomo_log_link_visit_action WHERE idvisit = {} ORDER BY pageview_position, server_time ASC'
+    'FROM matomo_log_link_visit_action WHERE idsite = 1 AND idvisit = {} ORDER BY pageview_position, server_time ASC'
 
 class Visit:
     Sim_Visits = {}
@@ -68,6 +69,15 @@ class Visit:
             return True
         return False
 
+    @classmethod
+    def nr_simultaneous_visits(cls, idvisitor, visits):
+        cnt = 0
+        for visit in visits:
+            key = f'{idvisitor}_{visit.visit_first_action_time}'
+            if key in cls.Sim_Visits:
+                cnt = cnt + 1
+        return (cnt - 1)
+    
     @classmethod
     def create_fake_first_visit(cls,visit_first_action_time):
         fake_visit = Visit(idvisit=-1, visitor_localtime=None, visit_first_action_time=visit_first_action_time, 
@@ -140,7 +150,7 @@ class Visit:
                                         action.set_label(label='HACK')
                                         break
                                 if not hack_found:
-                                    debugout(f'Path not found: {parsed_url.path}', DebugLevels.WRNG)
+                                    debugout(f'Path not found: {parsed_url.path} for {parsed_url.netloc}', DebugLevels.WRNG)
                                     action.set_label(label='UNDEFINED')
                                 # breakpoint()
                             if path_found > 1:
@@ -148,8 +158,9 @@ class Visit:
                         else:
                             action.set_label(label=loc_pattern['label'])
                 if not loc_found == 1:
-                    raise Exception(f'pattern found nr {loc_found} for {parsed_url.netloc}')
                     # breakpoint()
+                    raise Exception(f'pattern found {loc_found} times for {parsed_url.netloc}')
+                    
             elif url.type == 'TYPE_OUTLINK':
                 action.set_label('OUTLINK')
             elif url.type == 'TYPE_DOWNLOAD':

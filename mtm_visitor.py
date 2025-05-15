@@ -7,14 +7,14 @@ from mtm_visit import Visit
 # USER_ID = 'user_id'
 USER_ID = 'idvisitor'
 USER_FILTER = 'profilable = 1'
-USERS_QUERY = f"SELECT DISTINCT HEX({USER_ID}) FROM matomo_log_visit WHERE {USER_FILTER};"
+USERS_QUERY = f"SELECT DISTINCT HEX({USER_ID}) FROM matomo_log_visit WHERE idsite = 1 AND {USER_FILTER};"
 
-MISSING_VISITS_USERS_QUERY = 'SELECT HEX(idvisitor) FROM matomo_log_visit GROUP BY idvisitor HAVING MIN(visitor_returning) > 0'
+MISSING_VISITS_USERS_QUERY = 'SELECT HEX(idvisitor) FROM matomo_log_visit WHERE idsite = 1 GROUP BY idvisitor HAVING MIN(visitor_returning) > 0'
 VISITS_QUERY = "" \
 "SELECT idvisit, visitor_localtime, visitor_returning, visitor_count_visits, visitor_seconds_since_last, visitor_seconds_since_first, " \
 "visit_first_action_time,visit_last_action_time, visit_exit_idaction_url, visit_exit_idaction_name, visit_entry_idaction_url, " \
 "visit_entry_idaction_name, visit_total_actions, visit_total_searches, visit_total_events, visit_total_time, visit_goal_converted " \
-"FROM matomo_log_visit WHERE {}=UNHEX('{}');"
+"FROM matomo_log_visit WHERE idsite = 1 AND {}=UNHEX('{}') ORDER BY visitor_count_visits ASC, visitor_localtime ASC;"
 
 
 class Visitor:
@@ -55,6 +55,9 @@ class Visitor:
 
     @classmethod
     def get_users(cls):
+        """
+            Retrieve all users and set the missing_visits flag for each of them
+        """
         users_query = cls.Db_Conn.run_query(USERS_QUERY)
         for id_arr in users_query:
             id = id_arr[0]
@@ -77,6 +80,8 @@ class Visitor:
                 ags = dict(zip(columns, row))
                 if not visitor.add_visit(**ags):
                     raise Exception(f"Failed adding visit {ags['idvisit']} to user {visitor.id}")
+                    # debugout(f"Failed adding visit {ags['idvisit']} to user {visitor.id}", DebugLevels.ERR)
+                    # continue
 
 
     def add_visit(self, idvisit, visitor_localtime, visit_first_action_time, visit_last_action_time, visit_total_time, visit_entry_idaction_url, 
@@ -140,12 +145,22 @@ class Visitor:
             are missing visits. The function tries to fix these two cases 
             and fails otherwise.
         """
+        # if count_visits == self.get_nr_visits() and Visit.is_simultaneous_visit(self.id, self.last_visit):
+        #         print(f"{self.id} - {self.last_visit.idvisit}")
+        #         # breakpoint()
         if count_visits != self.get_nr_visits():
-            if Visit.is_simultaneous_visit(self.id, self.last_visit):
-                self.sim_visits += 1
-                # one before the last is simultaneous to last, so we make
-                # two before last the one before last (to comply to Matomo logic)
-                self.one_bl_visit = self.two_bl_visit
+            sim_visits = Visit.nr_simultaneous_visits(self.id, self.visits)
+            if sim_visits > 0 :
+                if Visit.is_simultaneous_visit(self.id, self.last_visit):
+                    self.sim_visits += 1
+                    # one before the last is simultaneous to last, so we make
+                    # two before last the one before last (to comply to Matomo logic)
+                    self.one_bl_visit = self.two_bl_visit
+                else:
+                    # There are simultaneous visits, but not the last one
+                    # Adjust the number of visits, do not change anything in the 
+                    # last visits order (unlike the case of simultaneous last visit)
+                    self.sim_visits = sim_visits
                 if count_visits == self.get_nr_visits():
                     return True
                 else:

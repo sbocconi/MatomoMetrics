@@ -11,7 +11,7 @@ from mtm_visit import Visit
 from mtm_visitor import Visitor
 from mtm_action import ActionItem
 
-STARTING_POINTS = ['LOGIN', 'HOME', 'REGISTER','PRIVACYPOLICY','PASSWORD']
+STARTING_POINTS = ['LOGIN', 'HOME', 'REGISTER','PRIVACYPOLICY','PASSWORD', 'MARKETPLACE']
 
 class NoRealVisitor(Exception):
     pass
@@ -195,14 +195,9 @@ def main(user, password, host, port, socket, database):
         # plot
         fig = go.Figure(data)
         fig.show()
-    
+                            
 
-
-
-
-                        
-
-        breakpoint()
+        # breakpoint()
 
             
 
@@ -269,7 +264,7 @@ if __name__ == "__main__":
         '--db',
         dest='db',
         action='store',
-        default='matomo',
+        default='matomo_14_05_25',
         required=False,
         help='specifies the database to connect to',
     )
