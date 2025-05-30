@@ -186,10 +186,14 @@ def main(user, password, host, port, socket, database):
 
         
         link = dict(source = sources, target = targets, value = values)
+        
+        # Several options for layout, watch out that with some settings
+        # the vertical bars disappear.
         # node = dict(label = labels, x=x, y=y)
         # node = dict(label = labels)
-        # node = dict(label=labels, pad=200, x=x)
-        node = dict(label=labels, pad=250, thickness=50)
+        node = dict(label=labels, pad=200, x=x)
+        # node = dict(label=labels, pad=250, thickness=50)
+        # node = dict(label=labels, pad=200, thickness=50)
         
         data = go.Sankey(arrangement = "snap",valueformat = "d", link = link, node=node)
         # plot
@@ -197,7 +201,7 @@ def main(user, password, host, port, socket, database):
         fig.show()
                             
 
-        # breakpoint()
+        breakpoint()
 
             
 

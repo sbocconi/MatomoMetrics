@@ -4,6 +4,9 @@ ACTIONS_QUERY = "SELECT idaction, `name`, `type`, url_prefix  FROM matomo_log_ac
 
 
 class ActionItem:
+    """
+        This class encapsulates Matomo's matomo_log_action table
+    """
     Db_Conn = None
     ActionsItems = {}
     TYPES = ['NO_TYPE', # = 0 
@@ -185,7 +188,9 @@ class ActionItem:
         return f'idaction {self.idaction}, name {self.name}, type {self.type}, url_prefix {self.url_prefix}'
 
 class Action:
-
+    """
+        This class represents an action during a visit
+    """
     def __init__(self, idlink_va:int, url:str, name:str, url_ref:str, name_ref:str,pageview_position:int,server_time:datetime.datetime):
         # breakpoint()
         self.idlink_va = idlink_va
