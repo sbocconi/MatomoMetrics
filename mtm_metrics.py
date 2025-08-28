@@ -268,7 +268,7 @@ if __name__ == "__main__":
         '--db',
         dest='db',
         action='store',
-        default='matomo_14_05_25',
+        default='matomo_07_07_25',
         required=False,
         help='specifies the database to connect to',
     )

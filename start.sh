@@ -1,4 +1,4 @@
-my_db=matomo_14_05_25
+my_db=matomo_07_07_25
 data_dir="../DataExports"
 
 if ! mysql.server status
